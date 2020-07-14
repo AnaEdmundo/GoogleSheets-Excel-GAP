@@ -1,4 +1,4 @@
-function GoogleSpreadsheetAsExcel() {
+function googleSpreadsheetAsExcel() {
   try {
     var ss = SpreadsheetApp.getActive();
     
