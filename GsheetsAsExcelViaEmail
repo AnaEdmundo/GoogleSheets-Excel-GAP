@@ -25,3 +25,12 @@ function GoogleSpreadsheetAsExcelViaEmail(){
    Logger.log(f.toString());
   }
 }
+
+function openTab(selection) {
+  
+  var html = "<script>window.open('" + selection + "');google.script.host.close();</script>";
+  
+  var userInterface = HtmlService.createHtmlOutput(html);
+  
+  SpreadsheetApp.getUi().showModalDialog(userInterface, 'Open Tab');
+}
