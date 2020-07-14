@@ -1,0 +1,53 @@
+function GoogleSpreadsheetAsExcel() {
+  try {
+    var ss = SpreadsheetApp.getActive();
+    
+    var url = "https://docs.google.com/feeds/download/spreadsheets/Export?key=" + ss.getId() + "&exportFormat=xlsx";
+
+    var params = {
+      method      : "get",
+      headers     : {"Authorization": "Bearer " + ScriptApp.getOAuthToken()},
+      muteHttpExceptions: true
+    };
+
+    var blob = UrlFetchApp.fetch(url, params).getBlob();
+
+    blob.setName(ss.getName() + ".xlsx");
+    
+    var sheetsFileName = SpreadsheetApp.getActiveSpreadsheet().getName();
+    var targetFolder = DriveApp.getFolderById("1-CMcZFBhX27iCWihr1a0yb25jMgLWTBC");
+    
+    var searchFiles = targetFolder.getFilesByName(sheetsFileName + ".xlsx");
+    var existingFileId = "";
+    
+    while (searchFiles.hasNext()) {
+      var tFile = searchFiles.next();
+      existingFileId = tFile.getId();
+      console.log(existingFileId);
+    }
+
+    var resource = { 
+      title: sheetsFileName + ".xlsx",
+      parents: [{'id':targetFolder.getId()}],
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    };
+    if (existingFileId != "") {
+      // updating (overwriting) existing file 
+      var file = Drive.Files.update(resource, existingFileId, blob);
+    } else {
+      // if creating new file  
+      var file = Drive.Files.insert(resource, blob);
+      existingFileId = file.id;
+    }
+    console.log(existingFileId);
+  } catch (f) {
+    Logger.log(f.toString());
+  }
+}
+
+// to have a menu on the Google sheets file to run the script from there
+function onOpen() 
+{
+  var ss = SpreadsheetApp.getActive();
+  var items = [{name:'Sheets To Excel',functionName: 'getGoogleSpreadsheetAsExcelinDrive'}];
+  ss.addMenu('Sheets to Excel', items);   }
