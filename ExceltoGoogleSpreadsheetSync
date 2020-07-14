@@ -1,0 +1,118 @@
+function ExceltoGoogleSpreadsheetSync() {
+  copySourceExcelToTempGsheet();
+  copyTempGsheetsToFinalGsheets();
+}
+
+// Code based on a Google Sheets template for easier user vizualization if several files are stored within a Google Drive Folder.
+// Thus, the function first step is to open the drive folder and retrive the names of the excel files and last update date.
+// Then, the function pastes these in the Google Sheets and copies the excel files to another folder in the drive split between Temporay and Final to guarantee the Sync and ID.
+
+function copySourceExcelToTempGsheet() {
+
+//Get all the names of the folders based on the Google Sheets
+	var ss = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  //All these range locations can be altered to fit user needs or even removed running without display
+	var FolderID = ss.getRange(2,4).getValue();
+    var gSheetsTempFolder = ss.getRange(2,6).getValue();
+    var gSheetsFinalFolder = ss.getRange(2,5).getValue();
+  
+//Open the folders and get the files inside 
+  var dApp = DriveApp;   
+  var folderIter = dApp.getFolderById(FolderID);
+	var filesIter = folderIter.getFiles(); 
+	var targetFolder =dApp.getFoldersByName(gSheetsTempFolder).next();
+	var i=1; 
+  
+//Deletes files in the temp folder     
+  var deletefiles = targetFolder.getFiles();
+  while (deletefiles.hasNext()) {
+  var file1 = deletefiles.next();
+    file1.setTrashed(true);
+} 
+	 
+//Open the initial drive folder and retrive the names of the excel files and last update date
+	while(filesIter.hasNext()) {
+		var file = filesIter.next();
+		var filename = file.getName();
+		var fileupdate = file.getLastUpdated();
+		ss.getRange(i+1, 1).setValue(filename);
+		ss.getRange(i+1, 2).setValue(fileupdate);
+        i++; 
+        
+//Convert from excel to google sheets 	  
+	var targetFileName = filename.replace(/.xlsx?/, "");
+    var fileId = file.getId();
+    var blob = file.getBlob();
+    var resource = {
+      title: targetFileName,
+      parents: [{'id':targetFolder.getId()}],
+      key: fileId
+    };
+    Drive.Files.insert(resource, blob, {
+      convert: true 
+    });
+  }
+}
+
+// Function to copy from one google sheets temporary to a fixed google sheets, thus keeping a constant file ID 
+
+function copyTempGsheetsToFinalGsheets() {
+  
+  var dApp = DriveApp; 
+  var ss = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var gSheetsTempFolder = ss.getRange(2,6).getValue();
+  var tempfolderIter = dApp.getFoldersByName(gSheetsTempFolder);
+  var tempfolder = tempfolderIter.next();
+  var tempfilesIter = tempfolder.getFiles(); 
+  
+  var gSheetsFinalFolder = ss.getRange(2,5).getValue();
+  var finalfolderIter = dApp.getFoldersByName(gSheetsFinalFolder);
+  var finalfolder = finalfolderIter.next();
+  var i=1; 
+ 
+
+// Attempt to match two files by the name and if matched copy the values
+  
+ while (tempfilesIter.hasNext()) {
+    
+ var tempFile = tempfilesIter.next();
+ var tempFileName = tempFile.getName();
+ var finalfilesIter = finalfolder.getFiles(); 
+
+ while (finalfilesIter.hasNext()) {
+ var finalFile = finalfilesIter.next();
+ var finalFileName = finalFile.getName(); 
+     
+ if (finalFileName === tempFileName) {
+
+  var tempID = tempFile.getId()
+  var finalID = finalFile.getId()
+
+  var sss = SpreadsheetApp.openById(tempID)
+  var ss = sss.getSheetByName('Insert tab name');
+  
+  //Get full range of data
+  var SRange = ss.getDataRange();
+
+  //Get A1 notation identifying the range
+  var A1Range = SRange.getA1Notation();
+
+  //Get the data values in range
+  var SData = SRange.getValues();
+
+  //Target spreadsheet & sheet location
+  var tss = SpreadsheetApp.openById(finalID);  
+  var ts = tss.getSheetByName('Insert tab name');
+    
+  //Clear the target Google Sheet before copy
+  ts.clear({contentsOnly: true});
+  
+  //Set the target range to the values of the source data
+  ts.getRange(A1Range).setValues(SData);
+
+  } else { 
+    finalfilesIter.hasNext();
+  };
+  i++}
+}
+}
